@@ -6,6 +6,18 @@ import NextAuth from 'next-auth'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { prisma } from '@/lib/prisma'
 
+// Extend the built-in session types
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string
+      name?: string | null
+      email?: string | null
+      image?: string | null
+    }
+  }
+}
+
 const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -42,7 +54,7 @@ const handler = NextAuth({
   },
   callbacks: {
     async session({ session, token }) {
-      if (token) {
+      if (token && session.user) {
         session.user.id = token.sub!
       }
       return session

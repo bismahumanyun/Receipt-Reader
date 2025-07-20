@@ -5,6 +5,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 
+interface ReceiptData {
+  id: string
+  filename: string
+  vendorName?: string | null
+  purchaseDate?: Date | null
+  totalAmount?: number | null
+  taxAmount?: number | null
+  confidence: number
+  needsReview: boolean
+  status: string
+  createdAt: Date
+  lineItems: Array<{
+    id: string
+    description?: string | null
+    quantity?: number | null
+    unitPrice?: number | null
+    totalPrice?: number | null
+  }>
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession()
@@ -32,7 +52,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Prepare data for Excel
-    const excelData = user.receipts.map(receipt => ({
+    const excelData = user.receipts.map((receipt: ReceiptData) => ({
       'Receipt ID': receipt.id,
       'Filename': receipt.filename,
       'Vendor': receipt.vendorName || '',
@@ -55,12 +75,13 @@ export async function GET(request: NextRequest) {
     // Generate Excel file
     const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
 
-    // Create response with Excel file
-    const response = new NextResponse(excelBuffer)
-    response.headers.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response.headers.set('Content-Disposition', `attachment; filename="receipts-${user.email}-${new Date().toISOString().split('T')[0]}.xlsx"`)
-
-    return response
+    // Create response with Excel file using NextResponse constructor
+    return new NextResponse(excelBuffer, {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename="receipts-${user.email}-${new Date().toISOString().split('T')[0]}.xlsx"`
+      }
+    })
   } catch (error) {
     console.error('Error exporting receipts:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
